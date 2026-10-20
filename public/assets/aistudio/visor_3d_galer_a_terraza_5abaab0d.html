@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Visor 3D - Galería en Terraza</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        iron: '#1e293b',
+                        wood: '#854d0e',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; overflow: hidden; touch-action: none; -webkit-tap-highlight-color: transparent; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-screen w-screen flex flex-col select-none touch-none overflow-hidden">
+
+    <!-- HEADER / SUPERIOR CONTROL BAR -->
+    <header class="absolute top-0 left-0 right-0 z-20 p-2 sm:p-4 flex justify-between items-center bg-gradient-to-b from-slate-950/95 via-slate-950/70 to-transparent pointer-events-none">
+        <div class="flex items-center space-x-2 sm:space-x-3 pointer-events-auto">
+            <div class="bg-amber-500 text-slate-900 p-2 sm:p-2.5 rounded-xl font-bold shadow-lg shadow-amber-500/20">
+                <i class="fa-solid fa-house-chimney-window text-base sm:text-lg"></i>
+            </div>
+            <div>
+                <h1 class="text-xs sm:text-lg font-bold leading-none text-white drop-shadow">Visor 3D Galería Terraza</h1>
+                <p class="text-[10px] sm:text-xs text-slate-400 mt-0.5 sm:mt-1 hidden sm:block">Pared con jardín vertical verde, parrilla exenta al aire libre y piso blanco</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-1.5 sm:space-x-2 pointer-events-auto">
+            <button id="btn-snapshot" onclick="takeSnapshot()" class="bg-sky-600 hover:bg-sky-500 active:scale-95 text-white px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-semibold transition shadow-lg flex items-center gap-1.5">
+                <i class="fa-solid fa-camera text-xs sm:text-sm"></i> <span class="hidden sm:inline">Generar Imagen 3D</span>
+            </button>
+            <button id="btn-auto-rotate" onclick="toggleAutoRotate()" class="bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-semibold transition shadow-lg flex items-center gap-1.5">
+                <i id="icon-rotate" class="fa-solid fa-arrows-spin text-xs sm:text-sm"></i> <span id="lbl-rotate" class="hidden sm:inline">Pausar Rotación</span>
+            </button>
+            <button id="btn-theme-toggle" onclick="toggleNightMode()" class="bg-slate-800/90 hover:bg-slate-700 active:scale-95 border border-slate-700 text-slate-200 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-semibold transition backdrop-blur shadow-lg flex items-center gap-1.5">
+                <i id="icon-theme" class="fa-solid fa-moon text-indigo-400"></i> <span id="lbl-theme" class="hidden sm:inline">Modo Noche</span>
+            </button>
+            <button onclick="toggleMobileSettings()" class="sm:hidden bg-slate-800/90 active:scale-95 border border-slate-700 text-amber-400 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition backdrop-blur shadow-lg flex items-center gap-1.5">
+                <i class="fa-solid fa-sliders"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN CANVAS & FLOATING CONTROLS -->
+    <div class="relative w-full h-full flex-1 touch-none">
+        
+        <!-- 3D CANVAS -->
+        <canvas id="three-canvas" class="w-full h-full cursor-grab active:cursor-grabbing block touch-none"></canvas>
+
+        <!-- FLOATING CAMERA PRESETS (LEFT) -->
+        <div class="absolute top-14 sm:top-20 left-2 sm:left-4 z-10 flex flex-col gap-1.5 sm:gap-2 max-w-[120px] sm:max-w-none">
+            <span class="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1 bg-slate-950/60 rounded backdrop-blur self-start">Vistas</span>
+            <button onclick="setCameraView('perspective')" class="bg-slate-900/80 hover:bg-slate-800 active:scale-95 border border-slate-700/80 text-slate-300 p-2 sm:p-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs backdrop-blur transition flex items-center gap-1.5 sm:gap-2 shadow-lg group">
+                <i class="fa-solid fa-eye text-amber-400 group-hover:scale-110 transition"></i> <span>Perspectiva</span>
+            </button>
+            <button onclick="setCameraView('front')" class="bg-slate-900/80 hover:bg-slate-800 active:scale-95 border border-slate-700/80 text-slate-300 p-2 sm:p-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs backdrop-blur transition flex items-center gap-1.5 sm:gap-2 shadow-lg group">
+                <i class="fa-solid fa-border-all text-sky-400 group-hover:scale-110 transition"></i> <span>Frontal</span>
+            </button>
+            <button onclick="setCameraView('top')" class="bg-slate-900/80 hover:bg-slate-800 active:scale-95 border border-slate-700/80 text-slate-300 p-2 sm:p-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs backdrop-blur transition flex items-center gap-1.5 sm:gap-2 shadow-lg group">
+                <i class="fa-solid fa-layer-group text-emerald-400 group-hover:scale-110 transition"></i> <span>Superior</span>
+            </button>
+            <button onclick="setCameraView('inside')" class="bg-slate-900/80 hover:bg-slate-800 active:scale-95 border border-slate-700/80 text-slate-300 p-2 sm:p-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs backdrop-blur transition flex items-center gap-1.5 sm:gap-2 shadow-lg group">
+                <i class="fa-solid fa-house-user text-purple-400 group-hover:scale-110 transition"></i> <span>Interior</span>
+            </button>
+        </div>
+
+        <!-- FLOATING SETTINGS PANEL (RIGHT / MOBILE COLLAPSIBLE) -->
+        <div id="settings-panel" class="hidden sm:flex absolute top-14 sm:top-20 right-2 sm:right-4 z-20 w-[calc(100vw-1rem)] sm:w-72 max-h-[calc(100vh-5rem)] sm:max-h-[calc(100vh-6rem)] bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 sm:p-4 backdrop-blur-md shadow-2xl overflow-y-auto custom-scrollbar flex-col gap-3 sm:gap-4">
+            <div class="border-b border-slate-800 pb-2 flex justify-between items-center">
+                <div>
+                    <h2 class="text-xs sm:text-sm font-bold text-amber-400 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders"></i> Ajustes de Terraza 3D
+                    </h2>
+                    <p class="text-[10px] sm:text-[11px] text-slate-400">Modifica dimensiones y vegetación.</p>
+                </div>
+                <button onclick="toggleMobileSettings()" class="sm:hidden text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+
+            <!-- Dimension Sliders -->
+            <div class="space-y-2.5 sm:space-y-3">
+                <div>
+                    <div class="flex justify-between text-[11px] sm:text-xs mb-1">
+                        <span class="text-slate-300">Ancho Total Terraza</span>
+                        <span id="lbl-ancho" class="text-amber-400 font-bold">5.0 m</span>
+                    </div>
+                    <input type="range" id="input-ancho" min="3.0" max="10.0" step="0.2" value="5.0" class="w-full accent-amber-500 bg-slate-800 rounded-lg h-2 sm:h-1.5 cursor-pointer">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-[11px] sm:text-xs mb-1">
+                        <span class="text-slate-300">Profundidad</span>
+                        <span id="lbl-profundidad" class="text-amber-400 font-bold">2.5 m</span>
+                    </div>
+                    <input type="range" id="input-profundidad" min="1.5" max="4.5" step="0.1" value="2.5" class="w-full accent-amber-500 bg-slate-800 rounded-lg h-2 sm:h-1.5 cursor-pointer">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-[11px] sm:text-xs mb-1">
+                        <span class="text-slate-300">Alto de Galería</span>
+                        <span id="lbl-alto" class="text-amber-400 font-bold">2.4 m</span>
+                    </div>
+                    <input type="range" id="input-alto" min="2.0" max="3.5" step="0.1" value="2.4" class="w-full accent-amber-500 bg-slate-800 rounded-lg h-2 sm:h-1.5 cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Visual Options -->
+            <div class="border-t border-slate-800 pt-2.5 sm:pt-3 space-y-2.5 sm:space-y-3">
+                <h3 class="text-[11px] sm:text-xs font-semibold text-slate-300">Componentes de Terraza</h3>
+
+                <div class="flex items-center justify-between p-2 bg-slate-950/50 rounded-xl border border-slate-800">
+                    <span class="text-[11px] sm:text-xs text-slate-300 flex items-center gap-2">
+                        <i class="fa-solid fa-fire text-amber-500"></i> Parrilla Exterior Exenta
+                    </span>
+                    <input type="checkbox" id="chk-parrilla" checked class="w-4 h-4 accent-amber-500 rounded cursor-pointer">
+                </div>
+
+                <div class="flex items-center justify-between p-2 bg-slate-950/50 rounded-xl border border-slate-800">
+                    <span class="text-[11px] sm:text-xs text-slate-300 flex items-center gap-2">
+                        <i class="fa-solid fa-leaf text-emerald-400"></i> Jardín Vertical en Pared
+                    </span>
+                    <input type="checkbox" id="chk-jardin" checked class="w-4 h-4 accent-emerald-500 rounded cursor-pointer">
+                </div>
+
+                <div class="flex items-center justify-between p-2 bg-slate-950/50 rounded-xl border border-slate-800">
+                    <span class="text-[11px] sm:text-xs text-slate-300 flex items-center gap-2">
+                        <i class="fa-solid fa-lightbulb text-amber-400"></i> Luces LED Spot
+                    </span>
+                    <input type="checkbox" id="chk-luces" checked class="w-4 h-4 accent-amber-500 rounded cursor-pointer">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-[11px] sm:text-xs mb-1">
+                        <span class="text-slate-300">Maceteros con Vegetación</span>
+                        <span id="lbl-macetas" class="text-emerald-400 font-bold">2</span>
+                    </div>
+                    <input type="range" id="input-macetas" min="0" max="6" step="1" value="2" class="w-full accent-emerald-500 bg-slate-800 rounded-lg h-2 sm:h-1.5 cursor-pointer">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] sm:text-xs text-slate-300 mb-1">Color de Madera</label>
+                    <select id="select-madera-color" class="w-full bg-slate-950 border border-slate-800 text-[11px] sm:text-xs rounded-xl p-2 text-slate-200 outline-none">
+                        <option value="0xa15c1d">Madera Cálida / Cetol</option>
+                        <option value="0x3f2314">Madera Oscura / Nogal</option>
+                        <option value="0xd4a373">Madera Clara / Pino Natural</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Reset Button -->
+            <button onclick="resetDefaults()" class="mt-1 sm:mt-2 w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2 active:scale-95">
+                <i class="fa-solid fa-rotate-left"></i> Restablecer Vista
+            </button>
+        </div>
+
+        <!-- BOTTOM HELPER & HUD -->
+        <div class="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-4 z-10 pointer-events-none flex justify-between items-end gap-2">
+            <div class="bg-slate-900/80 backdrop-blur border border-slate-800/80 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px] text-slate-300 space-y-0.5 sm:space-y-1 pointer-events-auto shadow-xl">
+                <div class="flex items-center gap-1.5"><span class="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-emerald-600 rounded-sm inline-block"></span> Pared Jardín Vertical</div>
+                <div class="flex items-center gap-1.5"><span class="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-slate-100 rounded-sm inline-block border border-slate-400"></span> Parrilla Blanca Exenta</div>
+                <div class="flex items-center gap-1.5"><span class="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-slate-100 rounded-sm inline-block border border-slate-300"></span> Piso Blanco Terraza</div>
+                <div class="flex items-center gap-1.5"><span class="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-zinc-800 rounded-sm inline-block border border-zinc-600"></span> Estructura de Hierro</div>
+            </div>
+
+            <div class="bg-slate-900/80 backdrop-blur border border-slate-800/80 px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px] text-slate-400 shadow-xl flex items-center gap-1.5">
+                <i class="fa-solid fa-hand-pointer text-amber-400"></i> <span class="hidden sm:inline">Desliza para rotar | Pinza/Rueda para zoom</span><span class="sm:hidden">Toca y arrastra en 3D</span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- MODAL SNAPSHOT PREVIEW IMAGE -->
+    <div id="snapshot-modal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md hidden flex-col items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-4 flex flex-col gap-3 shadow-2xl relative">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                <h3 class="text-sm font-bold text-amber-400 flex items-center gap-2">
+                    <i class="fa-solid fa-image"></i> Captura Renderizada 3D Terraza
+                </h3>
+                <button onclick="closeSnapshot()" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="relative w-full overflow-hidden rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center min-h-[250px]">
+                <img id="snapshot-img" src="" alt="Captura 3D Galería Terraza" class="max-h-[60vh] w-auto object-contain rounded-lg">
+            </div>
+            <div class="flex justify-end gap-2">
+                <a id="download-link" download="galeria_terraza_3d.png" class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2">
+                    <i class="fa-solid fa-download"></i> Descargar Imagen
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // GLOBAL STATE
+        const state = {
+            ancho: 5.0,
+            profundidad: 2.5,
+            alto: 2.4,
+            macetas: 2,
+            luces: true,
+            jardinVertical: true,
+            mostrarParrilla: true,
+            maderaColor: 0xa15c1d,
+            isNight: false,
+            autoRotate: true
+        };
+
+        let scene, camera, renderer, balconyGroup;
+        let ambientLight, dirLight, nightLight;
+        let isPointerDown = false;
+        let previousPointerPosition = { x: 0, y: 0 };
+        let touchStartDist = 0;
+
+        let targetCameraPos = { x: 6.5, y: 4.2, z: 7.5 };
+        let targetLookAt = { x: 0, y: 1.2, z: 0 };
+        let currentLookAt = { x: 0, y: 1.2, z: 0 };
+
+        window.onload = function () {
+            init3DEngine();
+            setupUIEventListeners();
+            animate3D();
+        };
+
+        function init3DEngine() {
+            const canvas = document.getElementById('three-canvas');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0f1d);
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(targetCameraPos.x, targetCameraPos.y, targetCameraPos.z);
+
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, preserveDrawingBuffer: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+            // Lights
+            ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            dirLight = new THREE.DirectionalLight(0xfffaed, 0.8);
+            dirLight.position.set(10, 15, 8);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            scene.add(dirLight);
+
+            nightLight = new THREE.PointLight(0x38bdf8, 0.2, 20);
+            nightLight.position.set(0, 5, 0);
+            scene.add(nightLight);
+
+            balconyGroup = new THREE.Group();
+            scene.add(balconyGroup);
+
+            buildTerrace3D();
+            setupInteractiveControls(canvas);
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function buildTerrace3D() {
+            while(balconyGroup.children.length > 0){ 
+                const obj = balconyGroup.children[0];
+                balconyGroup.remove(obj); 
+            }
+
+            const W = state.ancho; // Ancho total de la terraza
+            const D = state.profundidad;
+            const H = state.alto;
+
+            // Ancho asignado a la parrilla
+            const bbqWidth = state.mostrarParrilla ? 1.2 : 0;
+            // Ancho de la galería (termina ANTES de que comience el asador)
+            const galleryW = state.mostrarParrilla ? Math.max(1.5, W - bbqWidth - 0.2) : W;
+            // Centro X de la galería techada
+            const galleryOffsetX = state.mostrarParrilla ? - (W / 2) + (galleryW / 2) : 0;
+
+            // Materials
+            const ironMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.4, metalness: 0.8 });
+            const woodMat = new THREE.MeshStandardMaterial({ color: state.maderaColor, roughness: 0.6 });
+            
+            // Material de Chapa Transparente de Policarbonato Acanalado
+            const corrugatedSheetMat = new THREE.MeshPhysicalMaterial({
+                color: 0xf0f9ff,
+                transmission: 0.85,
+                opacity: 0.92,
+                transparent: true,
+                roughness: 0.15,
+                metalness: 0.1,
+                ior: 1.45,
+                reflectivity: 0.8,
+                clearcoat: 0.6,
+                side: THREE.DoubleSide
+            });
+
+            const whitePlasterMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3 });
+            const whiteFloorMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.2, metalness: 0.05 });
+            const plantMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 });
+            const leafDarkMat = new THREE.MeshStandardMaterial({ color: 0x166534, roughness: 0.7 });
+            const leafLightMat = new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.8 });
+            const potMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.5 });
+            const lightFixtureMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, emissive: state.isNight && state.luces ? 0xfef08a : 0x000000, emissiveIntensity: 0.8 });
+
+            // 1. Pared Trasera Completa de Jardín Vertical Verde TUPIDO (Toda de lado a lado)
+            const wallGeo = new THREE.BoxGeometry(W + 0.4, H + 0.8, 0.2);
+            const wallMat = new THREE.MeshStandardMaterial({ color: state.jardinVertical ? 0x0f391b : 0x7c2d12, roughness: 0.9 });
+            const wallMesh = new THREE.Mesh(wallGeo, wallMat);
+            wallMesh.position.set(0, H / 2, -D / 2);
+            balconyGroup.add(wallMesh);
+
+            if (state.jardinVertical) {
+                // Follaje tupido cubriendo toda la pared trasera
+                const densityX = Math.floor((W + 0.4) * 8);
+                const densityY = Math.floor((H + 0.8) * 6);
+                for (let ix = 0; ix < densityX; ix++) {
+                    for (let iy = 0; iy < densityY; iy++) {
+                        const px = -((W + 0.4) / 2) + ((W + 0.4) / densityX) * ix + (Math.random() * 0.08 - 0.04);
+                        const py = -0.2 + ((H + 0.8) / densityY) * iy + (Math.random() * 0.08 - 0.04);
+                        const pz = -D / 2 + 0.15 + (Math.random() * 0.05);
+                        
+                        const leafMatChoice = (ix + iy) % 3 === 0 ? leafLightMat : ((ix + iy) % 2 === 0 ? leafDarkMat : plantMat);
+                        const leafClusterGeo = new THREE.DodecahedronGeometry(0.11 + Math.random() * 0.08, 1);
+                        const leafCluster = new THREE.Mesh(leafClusterGeo, leafMatChoice);
+                        leafCluster.position.set(px, py, pz);
+                        leafCluster.rotation.set(Math.random(), Math.random(), Math.random());
+                        balconyGroup.add(leafCluster);
+                    }
+                }
+            }
+
+            // 2. Piso BLANCO de la Terraza
+            const floorGeo = new THREE.BoxGeometry(W + 0.4, 0.15, D + 0.4);
+            const floorMesh = new THREE.Mesh(floorGeo, whiteFloorMat);
+            floorMesh.position.set(0, -0.075, 0);
+            floorMesh.receiveShadow = true;
+            balconyGroup.add(floorMesh);
+
+            // 3. Parrilla de Material Exenta (Ubicada al AIRE LIBRE fuera del área de la galería techada)
+            if (state.mostrarParrilla) {
+                const bbqDepth = 0.8;
+                const bbqPosX = W / 2 - bbqWidth / 2;
+                const bbqPosZ = -D / 2 + bbqDepth / 2 + 0.1;
+
+                // Base / Mesada de Parrilla en mampostería blanca
+                const bbqBaseGeo = new THREE.BoxGeometry(bbqWidth, 0.9, bbqDepth);
+                const bbqBase = new THREE.Mesh(bbqBaseGeo, whitePlasterMat);
+                bbqBase.position.set(bbqPosX, 0.45, bbqPosZ);
+                bbqBase.castShadow = true;
+                balconyGroup.add(bbqBase);
+
+                // Campana Superior Blanca
+                const hoodGeo = new THREE.BoxGeometry(bbqWidth, 0.9, bbqDepth);
+                const hood = new THREE.Mesh(hoodGeo, whitePlasterMat);
+                hood.position.set(bbqPosX, 1.85, bbqPosZ);
+                hood.castShadow = true;
+                balconyGroup.add(hood);
+
+                // Hueco / Parrilla Interior
+                const cavityGeo = new THREE.BoxGeometry(bbqWidth - 0.2, 0.65, bbqDepth - 0.1);
+                const cavityMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.9 });
+                const cavity = new THREE.Mesh(cavityGeo, cavityMat);
+                cavity.position.set(bbqPosX, 1.225, bbqPosZ + 0.05);
+                balconyGroup.add(cavity);
+
+                // Rejilla metálica
+                const grillGeo = new THREE.BoxGeometry(bbqWidth - 0.3, 0.02, bbqDepth - 0.2);
+                const grillMat = new THREE.MeshStandardMaterial({ color: 0x52525b, metalness: 0.9, roughness: 0.3 });
+                const grill = new THREE.Mesh(grillGeo, grillMat);
+                grill.position.set(bbqPosX, 1.0, bbqPosZ + 0.05);
+                balconyGroup.add(grill);
+            }
+
+            // 4. Anclajes de Hierro Amurados a la Pared Trasera (Solo en el tramo de la Galería)
+            [-galleryW / 2 + 0.1, galleryW / 2 - 0.1].forEach(xRel => {
+                const plateGeo = new THREE.BoxGeometry(0.15, 0.3, 0.08);
+                const plateMesh = new THREE.Mesh(plateGeo, ironMat);
+                plateMesh.position.set(galleryOffsetX + xRel, H - 0.1, -D / 2 + 0.1);
+                balconyGroup.add(plateMesh);
+            });
+
+            // 5. Columnas de Soporte Frontales de la Galería
+            const cantCols = galleryW > 5.5 ? 3 : 2;
+            const colPositions = cantCols === 2 
+                ? [-galleryW / 2 + 0.1, galleryW / 2 - 0.1]
+                : [-galleryW / 2 + 0.1, 0, galleryW / 2 - 0.1];
+
+            colPositions.forEach(xRel => {
+                const colGeo = new THREE.BoxGeometry(0.1, H, 0.1);
+                const colMesh = new THREE.Mesh(colGeo, ironMat);
+                colMesh.position.set(galleryOffsetX + xRel, H / 2, D / 2 - 0.08);
+                colMesh.castShadow = true;
+                balconyGroup.add(colMesh);
+            });
+
+            // 6. Perfiles y Vigas de Hierro Perimetrales de la Galería
+            const frontBeamGeo = new THREE.BoxGeometry(galleryW, 0.12, 0.1);
+            const frontBeam = new THREE.Mesh(frontBeamGeo, ironMat);
+            frontBeam.position.set(galleryOffsetX, H, D / 2 - 0.08);
+            frontBeam.castShadow = true;
+            balconyGroup.add(frontBeam);
+
+            [-galleryW / 2 + 0.05, galleryW / 2 - 0.05].forEach(xRel => {
+                const sideBeamGeo = new THREE.BoxGeometry(0.1, 0.12, D);
+                const sideBeam = new THREE.Mesh(sideBeamGeo, ironMat);
+                sideBeam.position.set(galleryOffsetX + xRel, H, 0);
+                sideBeam.castShadow = true;
+                balconyGroup.add(sideBeam);
+            });
+
+            // Perfiles Estructurales Transversales de la Galería
+            const cantJoists = Math.ceil(galleryW / 1.0);
+            for (let i = 1; i < cantJoists; i++) {
+                const xRel = -galleryW / 2 + (galleryW / cantJoists) * i;
+                const joistGeo = new THREE.BoxGeometry(0.06, 0.08, D);
+                const joistMesh = new THREE.Mesh(joistGeo, ironMat);
+                joistMesh.position.set(galleryOffsetX + xRel, H - 0.02, 0);
+                balconyGroup.add(joistMesh);
+            }
+
+            // 7. Cielo Raso de Listones de Madera (Pérgola solo sobre la Galería)
+            const numSlats = Math.floor(D / 0.12);
+            for (let i = 0; i < numSlats; i++) {
+                const zPos = -D / 2 + (i * 0.12) + 0.08;
+                const slatGeo = new THREE.BoxGeometry(galleryW - 0.12, 0.025, 0.07);
+                const slatMesh = new THREE.Mesh(slatGeo, woodMat);
+                slatMesh.position.set(galleryOffsetX, H - 0.06, zPos);
+                slatMesh.castShadow = true;
+                balconyGroup.add(slatMesh);
+            }
+
+            // Spotlights / Iluminación LED Integrada
+            if (state.luces) {
+                const spotPositions = [
+                    { x: galleryOffsetX - galleryW * 0.25, z: -D * 0.2 },
+                    { x: galleryOffsetX, z: -D * 0.2 },
+                    { x: galleryOffsetX + galleryW * 0.25, z: -D * 0.2 },
+                    { x: galleryOffsetX - galleryW * 0.25, z: D * 0.2 },
+                    { x: galleryOffsetX, z: D * 0.2 },
+                    { x: galleryOffsetX + galleryW * 0.25, z: D * 0.2 }
+                ];
+
+                spotPositions.forEach(pos => {
+                    const spotFixtureGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.03, 12);
+                    const spotFixture = new THREE.Mesh(spotFixtureGeo, lightFixtureMat);
+                    spotFixture.position.set(pos.x, H - 0.075, pos.z);
+                    balconyGroup.add(spotFixture);
+
+                    if (state.isNight) {
+                        const spotLight = new THREE.SpotLight(0xfef08a, 1.2, 5, Math.PI / 4, 0.5);
+                        spotLight.position.set(pos.x, H - 0.08, pos.z);
+                        spotLight.target.position.set(pos.x, 0, pos.z);
+                        balconyGroup.add(spotLight);
+                        balconyGroup.add(spotLight.target);
+                    }
+                });
+            }
+
+            // 8. Chapa Transparente Acanalada Ubicada Directamente Arriba del Techo de la Galería
+            const corrugatedGroup = new THREE.Group();
+            const ridgePitch = 0.15;
+            const ridgeHeight = 0.035;
+            const sheetThickness = 0.008;
+            const numWaves = Math.ceil((galleryW + 0.1) / ridgePitch);
+
+            for (let i = 0; i < numWaves; i++) {
+                const waveX = -(galleryW + 0.1) / 2 + i * ridgePitch + ridgePitch / 2;
+                
+                const waveGeo = new THREE.BoxGeometry(ridgePitch * 0.5, ridgeHeight, D + 0.2);
+                const waveMesh = new THREE.Mesh(waveGeo, corrugatedSheetMat);
+                waveMesh.position.set(waveX, ridgeHeight / 2, 0);
+                waveMesh.castShadow = true;
+                waveMesh.receiveShadow = true;
+                corrugatedGroup.add(waveMesh);
+
+                const baseGeo = new THREE.BoxGeometry(ridgePitch * 0.5, sheetThickness, D + 0.2);
+                const baseMesh = new THREE.Mesh(baseGeo, corrugatedSheetMat);
+                baseMesh.position.set(waveX + ridgePitch * 0.25, sheetThickness / 2, 0);
+                baseMesh.castShadow = true;
+                baseMesh.receiveShadow = true;
+                corrugatedGroup.add(baseMesh);
+            }
+
+            corrugatedGroup.position.set(galleryOffsetX, H + 0.06, 0);
+            corrugatedGroup.rotation.x = 0.03;
+            balconyGroup.add(corrugatedGroup);
+
+            // 9. Maceteros con Vegetación
+            for (let i = 0; i < state.macetas; i++) {
+                const potGeo = new THREE.CylinderGeometry(0.28, 0.2, 0.6, 16);
+                const potMesh = new THREE.Mesh(potGeo, potMat);
+                
+                const posX = (i % 2 === 0 ? 1 : -1) * (galleryW / 2 - 0.4) + galleryOffsetX;
+                const posZ = i >= 2 ? -D / 3 : D / 2 - 0.4;
+                potMesh.position.set(posX, 0.3, posZ);
+                potMesh.castShadow = true;
+                balconyGroup.add(potMesh);
+
+                for (let l = 0; l < 4; l++) {
+                    const leafGeo = new THREE.ConeGeometry(0.3, 0.8, 5);
+                    const leafMesh = new THREE.Mesh(leafGeo, plantMat);
+                    leafMesh.position.set(posX, 0.9 + (l * 0.1), posZ);
+                    leafMesh.rotation.z = (l % 2 === 0 ? 0.25 : -0.25);
+                    leafMesh.castShadow = true;
+                    balconyGroup.add(leafMesh);
+                }
+            }
+        }
+
+        function setupInteractiveControls(canvas) {
+            canvas.addEventListener('mousedown', (e) => {
+                isPointerDown = true;
+                previousPointerPosition = { x: e.clientX, y: e.clientY };
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (!isPointerDown) return;
+                const deltaX = e.clientX - previousPointerPosition.x;
+                const deltaY = e.clientY - previousPointerPosition.y;
+
+                balconyGroup.rotation.y += deltaX * 0.008;
+                balconyGroup.rotation.x += deltaY * 0.005;
+
+                balconyGroup.rotation.x = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, balconyGroup.rotation.x));
+                previousPointerPosition = { x: e.clientX, y: e.clientY };
+            });
+
+            window.addEventListener('mouseup', () => { isPointerDown = false; });
+
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                camera.position.z += e.deltaY * 0.005;
+                camera.position.z = Math.max(3.0, Math.min(18.0, camera.position.z));
+            }, { passive: false });
+
+            // Touch events for Mobile
+            canvas.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    isPointerDown = true;
+                    previousPointerPosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                } else if (e.touches.length === 2) {
+                    touchStartDist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                }
+            });
+
+            canvas.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 1 && isPointerDown) {
+                    const deltaX = e.touches[0].clientX - previousPointerPosition.x;
+                    const deltaY = e.touches[0].clientY - previousPointerPosition.y;
+
+                    balconyGroup.rotation.y += deltaX * 0.008;
+                    balconyGroup.rotation.x += deltaY * 0.005;
+
+                    balconyGroup.rotation.x = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, balconyGroup.rotation.x));
+                    previousPointerPosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                } else if (e.touches.length === 2) {
+                    const dist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    const delta = touchStartDist - dist;
+                    camera.position.z += delta * 0.01;
+                    camera.position.z = Math.max(3.0, Math.min(18.0, camera.position.z));
+                    touchStartDist = dist;
+                }
+            });
+
+            canvas.addEventListener('touchend', () => { isPointerDown = false; });
+        }
+
+        function setupUIEventListeners() {
+            document.getElementById('input-ancho').addEventListener('input', (e) => {
+                state.ancho = parseFloat(e.target.value);
+                document.getElementById('lbl-ancho').innerText = state.ancho.toFixed(1) + ' m';
+                buildTerrace3D();
+            });
+
+            document.getElementById('input-profundidad').addEventListener('input', (e) => {
+                state.profundidad = parseFloat(e.target.value);
+                document.getElementById('lbl-profundidad').innerText = state.profundidad.toFixed(1) + ' m';
+                buildTerrace3D();
+            });
+
+            document.getElementById('input-alto').addEventListener('input', (e) => {
+                state.alto = parseFloat(e.target.value);
+                document.getElementById('lbl-alto').innerText = state.alto.toFixed(1) + ' m';
+                buildTerrace3D();
+            });
+
+            document.getElementById('input-macetas').addEventListener('input', (e) => {
+                state.macetas = parseInt(e.target.value);
+                document.getElementById('lbl-macetas').innerText = state.macetas;
+                buildTerrace3D();
+            });
+
+            document.getElementById('chk-luces').addEventListener('change', (e) => {
+                state.luces = e.target.checked;
+                buildTerrace3D();
+            });
+
+            const chkJardin = document.getElementById('chk-jardin');
+            if (chkJardin) {
+                chkJardin.addEventListener('change', (e) => {
+                    state.jardinVertical = e.target.checked;
+                    buildTerrace3D();
+                });
+            }
+
+            const chkParrilla = document.getElementById('chk-parrilla');
+            if (chkParrilla) {
+                chkParrilla.addEventListener('change', (e) => {
+                    state.mostrarParrilla = e.target.checked;
+                    buildTerrace3D();
+                });
+            }
+
+            document.getElementById('select-madera-color').addEventListener('change', (e) => {
+                state.maderaColor = parseInt(e.target.value);
+                buildTerrace3D();
+            });
+        }
+
+        function toggleMobileSettings() {
+            const panel = document.getElementById('settings-panel');
+            if (panel.classList.contains('hidden')) {
+                panel.classList.remove('hidden');
+                panel.classList.add('flex');
+            } else {
+                panel.classList.add('hidden');
+                panel.classList.remove('flex');
+            }
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            if (state.autoRotate && !isPointerDown) {
+                balconyGroup.rotation.y += 0.004;
+            }
+
+            camera.position.x += (targetCameraPos.x - camera.position.x) * 0.05;
+            camera.position.y += (targetCameraPos.y - camera.position.y) * 0.05;
+            camera.position.z += (targetCameraPos.z - camera.position.z) * 0.05;
+
+            currentLookAt.x += (targetLookAt.x - currentLookAt.x) * 0.05;
+            currentLookAt.y += (targetLookAt.y - currentLookAt.y) * 0.05;
+            currentLookAt.z += (targetLookAt.z - currentLookAt.z) * 0.05;
+
+            camera.lookAt(currentLookAt.x, currentLookAt.y, currentLookAt.z);
+
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
+        }
+
+        function setCameraView(view) {
+            state.autoRotate = false;
+            updateRotateButtonState();
+
+            balconyGroup.rotation.x = 0;
+            balconyGroup.rotation.y = 0;
+
+            switch (view) {
+                case 'perspective':
+                    targetCameraPos = { x: 6.5, y: 4.2, z: 7.5 };
+                    targetLookAt = { x: 0, y: 1.2, z: 0 };
+                    break;
+                case 'front':
+                    targetCameraPos = { x: 0, y: 1.5, z: 8.5 };
+                    targetLookAt = { x: 0, y: 1.2, z: 0 };
+                    break;
+                case 'top':
+                    targetCameraPos = { x: 0, y: 9.0, z: 0.1 };
+                    targetLookAt = { x: 0, y: 0, z: 0 };
+                    break;
+                case 'inside':
+                    targetCameraPos = { x: 0, y: 1.4, z: -state.profundidad / 2 + 0.3 };
+                    targetLookAt = { x: 0, y: 1.3, z: state.profundidad / 2 };
+                    break;
+            }
+        }
+
+        function toggleAutoRotate() {
+            state.autoRotate = !state.autoRotate;
+            updateRotateButtonState();
+        }
+
+        function updateRotateButtonState() {
+            const btn = document.getElementById('btn-auto-rotate');
+            const icon = document.getElementById('icon-rotate');
+            const lbl = document.getElementById('lbl-rotate');
+
+            if (state.autoRotate) {
+                lbl.innerText = 'Pausar Rotación';
+                icon.className = 'fa-solid fa-arrows-spin text-sm';
+                btn.className = 'bg-amber-500 hover:bg-amber-400 text-slate-950 px-3.5 py-2 rounded-xl text-xs font-semibold transition shadow-lg flex items-center gap-2';
+            } else {
+                lbl.innerText = 'Girar Automáticamente';
+                icon.className = 'fa-solid fa-play text-sm';
+                btn.className = 'bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2 rounded-xl text-xs font-semibold transition backdrop-blur shadow-lg border border-slate-700 flex items-center gap-2';
+            }
+        }
+
+        function toggleNightMode() {
+            state.isNight = !state.isNight;
+            const btn = document.getElementById('btn-theme-toggle');
+            const icon = document.getElementById('icon-theme');
+            const lbl = document.getElementById('lbl-theme');
+
+            if (state.isNight) {
+                scene.background = new THREE.Color(0x020617);
+                ambientLight.intensity = 0.15;
+                dirLight.intensity = 0.08;
+                nightLight.intensity = 0.8;
+                icon.className = 'fa-solid fa-sun text-amber-400';
+                lbl.innerText = 'Modo Día';
+            } else {
+                scene.background = new THREE.Color(0x0a0f1d);
+                ambientLight.intensity = 0.6;
+                dirLight.intensity = 0.8;
+                nightLight.intensity = 0.2;
+                icon.className = 'fa-solid fa-moon text-indigo-400';
+                lbl.innerText = 'Modo Noche';
+            }
+            buildTerrace3D();
+        }
+
+        function takeSnapshot() {
+            renderer.render(scene, camera);
+            const dataURL = renderer.domElement.toDataURL('image/png');
+            document.getElementById('snapshot-img').src = dataURL;
+            document.getElementById('download-link').href = dataURL;
+            document.getElementById('snapshot-modal').classList.remove('hidden');
+            document.getElementById('snapshot-modal').classList.add('flex');
+        }
+
+        function closeSnapshot() {
+            document.getElementById('snapshot-modal').classList.add('hidden');
+            document.getElementById('snapshot-modal').classList.remove('flex');
+        }
+
+        function resetDefaults() {
+            state.ancho = 5.0;
+            state.profundidad = 2.5;
+            state.alto = 2.4;
+            state.macetas = 2;
+            state.luces = true;
+            state.jardinVertical = true;
+            state.mostrarParrilla = true;
+
+            document.getElementById('input-ancho').value = 5.0;
+            document.getElementById('input-profundidad').value = 2.5;
+            document.getElementById('input-alto').value = 2.4;
+            document.getElementById('input-macetas').value = 2;
+            document.getElementById('chk-luces').checked = true;
+            
+            const chkJardin = document.getElementById('chk-jardin');
+            if (chkJardin) chkJardin.checked = true;
+
+            const chkParrilla = document.getElementById('chk-parrilla');
+            if (chkParrilla) chkParrilla.checked = true;
+
+            document.getElementById('lbl-ancho').innerText = '5.0 m';
+            document.getElementById('lbl-profundidad').innerText = '2.5 m';
+            document.getElementById('lbl-alto').innerText = '2.4 m';
+            document.getElementById('lbl-macetas').innerText = '2';
+
+            setCameraView('perspective');
+            buildTerrace3D();
+        }
+
+        function onWindowResize() {
+            if (!renderer || !camera) return;
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+    </script>
+</body>
+</html>

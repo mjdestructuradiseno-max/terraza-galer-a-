@@ -1,0 +1,6 @@
+{
+  "name": "Visor 3D Galería Terraza Hiperrealista",
+  "description": "Visualizador y configurador arquitectónico 3D hiperrealista para galerías en terrazas con jardín vertical, parrilla exenta, pérgola de hierro y cielo raso de madera.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
